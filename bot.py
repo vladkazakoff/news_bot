@@ -78,10 +78,19 @@ def top_post_calculator(vk_collection, t_period):
     posts = sorted(posts, key=lambda d: d['rate'], reverse = True)
     return posts[:5]
 
+
+def check_count_value(obj, key, default_value): # функция проверки значений для рассчёта рейтинга
+    if obj.get(key, False) == False: # проверка наличия ключа
+        return default_value
+    if default_value == 1 and obj[key]['count'] == 0: 
+        return default_value
+    return obj[key]['count']
+
+
 def rate_calc(post, cnt_subs):
-    view_cnt = post['views']['count']
-    return view_cnt / cnt_subs * 0.2 + post['likes']['count'] / view_cnt * 0.5 \
-           + post['comments']['count'] / view_cnt * 0.8 + post['reposts']['count'] / view_cnt * 1.2
+    view_cnt = check_count_value(post,'views', 1)
+    return view_cnt / cnt_subs * 0.2 + check_count_value(post, 'likes', 0) / view_cnt * 0.5 \
+           + check_count_value(post, 'comments', 0) / view_cnt * 0.8 + check_count_value(post, 'reposts', 0) / view_cnt * 1.2
 
 
 # запускаем бота
