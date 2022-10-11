@@ -6,6 +6,7 @@ from requests import get
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.utils.markdown import hbold, hlink
 from config import tg_token, tg_channel, vk_group_ids
+import difflib
 
 # создаем объект бота, которому передаем токен, а также указываем какого типа будут
 # отправляемые сообщения, создаем диспетчера, в которого передаем бота
@@ -41,7 +42,6 @@ async def start(message: types.Message):
 
 def vk_collector(vk_lib):
     info = []
-
     for group_id in vk_group_ids:
         posts = vk_lib.get_wall_posts(count=20, group_id=-group_id)
         group = vk_lib.get_group_info(group_id=group_id)
@@ -61,6 +61,7 @@ def top_post_calculator(vk_collection, t_period):
                 post['source_name'] = group['group']['name']
                 posts.append(post)
     posts = sorted(posts, key=lambda d: d['rate'], reverse = True)
+    posts = delete_news_doubles(posts) # избавление от дублей
     return posts[:5]
 
 
@@ -76,6 +77,28 @@ def rate_calc(post, cnt_subs):
     view_cnt = check_count_value(post,'views', 1)
     return view_cnt / cnt_subs * 0.2 + check_count_value(post, 'likes', 0) / view_cnt * 0.5 \
            + check_count_value(post, 'comments', 0) / view_cnt * 0.8 + check_count_value(post, 'reposts', 0) / view_cnt * 1.2
+
+
+def similarity(s1, s2):
+    if len(s1) == 0 or len(s2) == 0:
+        return 0
+    normalized1 = s1.lower()
+    normalized2 = s2.lower()
+    matcher = difflib.SequenceMatcher(None, normalized1, normalized2)
+    return matcher.ratio()
+
+
+def delete_news_doubles(post_list):
+    for i in range(len(post_list) - 1): # проверка на дубли
+        for j in range(i + 1, len(post_list)):
+            similarity_value = similarity(post_list[i]['text'], post_list[j]['text'])
+            if similarity_value > 0.8:
+                post_list[j]['is_double'] = True               
+    new_post_list = [] # посты без дублей
+    for post in post_list:
+        if post.get("is_double", False) == False:
+            new_post_list.append(post)
+    return new_post_list
 
 
 # запускаем бота
