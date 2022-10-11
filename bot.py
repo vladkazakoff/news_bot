@@ -16,7 +16,9 @@ dp = Dispatcher(bot)
 
 @dp.message_handler(commands="start")
 async def start(message: types.Message):
-    time_period = 0 # за какой период учитывать новости (минуты)
+    time_period = datetime.datetime.now().minute # за какой период учитывать новости (минуты)
+    if time_period == 0: # если бота запустили ровно в 00 минут
+        time_period = 60
     while True:   
         date_now = datetime.datetime.now()
         if date_now.minute == 0 and date_now.hour >= 7:
