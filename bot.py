@@ -12,25 +12,13 @@ from config import tg_token, tg_channel, vk_group_ids
 bot = Bot(token=tg_token, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot)
 
-break_length = 7 # длительность ночного перерыва (часы)
 
 @dp.message_handler(commands="start")
 async def start(message: types.Message):
+    time_period = 0 # за какой период учитывать новости (минуты)
     while True:   
         date_now = datetime.datetime.now()
-        if date_now.minute != 0:
-            #print(date_now)
-            time.sleep(60)
-        elif date_now.hour >= 0 and date_now.hour < 7: # ночной перерыв с 0 до 7 часов
-            #print(str(date_now.hour) + "ч. " + str(date_now.minute) + "мин. ночной сон")
-            #print("-----------------------------")
-            time.sleep(3590 * (break_length - date_now.hour)) 
-        else:  
-            #print(date_now)
-            time_period = 60 # за какой период учитывать новости (минуты)
-            if date_now.hour == 7 : # после ночного перерыва (07:00) учесть новости за это время
-                time_period = 60 * break_length
-            
+        if date_now.minute == 0 and date_now.hour >= 7:
             vk_lib = vk_api_lib.VkApiLib()
             top_posts = top_post_calculator(vk_collector(vk_lib), time_period)
             i = 0
@@ -45,13 +33,10 @@ async def start(message: types.Message):
                 i += 1
                 message = '<b>' + text + '</b>\n' + link + '\n\n'
                 await bot.send_message(tg_channel, message)
-            
-            #t_after_work = datetime.datetime.now()
-            #print(t_after_work)
-            #print("сон на " + str(3480/60) + " мин.")
-            #print("-----------------------------")
-            # (на выполнение кода выше тратится время, оставляю запас 2 мин., чтоб не проскочить следующую метку hh:00)
-            time.sleep(3480) # сон на 58 минут 
+            time_period = 0
+        else:
+            time_period += 1
+        time.sleep(60)
 
 
 def vk_collector(vk_lib):
