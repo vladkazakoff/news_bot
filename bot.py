@@ -1,39 +1,26 @@
 import time
 import datetime
 import vk_api_lib
-from rss_parser import Parser
-from requests import get
 from aiogram import Bot, Dispatcher, executor, types
-from aiogram.utils.markdown import hbold, hlink
 from config import tg_token, tg_channel, vk_group_ids
 import difflib
 
-# создаем объект бота, которому передаем токен, а также указываем какого типа будут
-# отправляемые сообщения, создаем диспетчера, в которого передаем бота
 bot = Bot(token=tg_token, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot)
 
 
 @dp.message_handler(commands="start")
 async def start(message: types.Message):
-    time_period = datetime.datetime.now().minute # за какой период учитывать новости (минуты)
-    if time_period == 0: # если бота запустили ровно в 00 минут
-        time_period = 60
+    time_period = datetime.datetime.now().minute
     while True:   
         date_now = datetime.datetime.now()
-        if date_now.minute == 0 and date_now.hour >= 7:
+        if date_now.minute == 0 and 7 <= date_now.hour <= 23:
             vk_lib = vk_api_lib.VkApiLib()
+            time_period = 60 if time_period < 60 else time_period
             top_posts = top_post_calculator(vk_collector(vk_lib), time_period)
-            i = 0
-            message = ''
-            media = []
             for post in top_posts:
-                # for attach in post['attachments']:
-                #    if attach['type'] == 'photo':
-                #        media.append(attach['photo']['sizes'][4]['url'])
                 link = 'Источник: https://vk.com/wall' + str(post['owner_id']) + '_' + str(post['id'])
                 text = post['text'][0:150].replace('\n', '') + '...'
-                i += 1
                 message = '<b>' + text + '</b>\n' + link + '\n\n'
                 await bot.send_message(tg_channel, message)
             time_period = 0
@@ -84,10 +71,7 @@ def rate_calc(post, cnt_subs):
 def similarity(s1, s2):
     if len(s1) == 0 or len(s2) == 0:
         return 0
-    normalized1 = s1.lower()
-    normalized2 = s2.lower()
-    matcher = difflib.SequenceMatcher(None, normalized1, normalized2)
-    return matcher.ratio()
+    return difflib.SequenceMatcher(None, s1.lower(), s2.lower()).ratio()
 
 
 def delete_news_doubles(post_list):
